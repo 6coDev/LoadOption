@@ -27,17 +27,32 @@ def format_dat(input_text: str) -> str:
     mc = ""
     company = ""
 
+    # Detect "City, ST" location lines, with or without a trailing dead-head
+    # number in parentheses — e.g. both "Zion, IL (15)" and "Naperville, IL"
+    # are recognised as valid pickup/delivery candidates. When the
+    # parentheses ARE present, that number is still captured as Dead Head
+    # for the first (pickup) location only — matching original behaviour.
     locs = []
     for line in lines:
         line_stripped = line.strip()
+
+        # Try the "City, ST (number)" form first
         m = re.match(r"^(.*?)\s*\((\d+)\)$", line_stripped)
         if m:
             city = m.group(1).strip()
             number = m.group(2)
-            if re.match(r"^[A-Za-z .'\-]+,\s*[A-Z]{2}$", city):
-                locs.append(city)
-                if len(locs) == 1:
-                    dead_head = number
+        else:
+            # Fall back to a bare "City, ST" line — no parentheses needed
+            m = re.match(r"^([A-Za-z .'\-]+,\s*[A-Z]{2})$", line_stripped)
+            if not m:
+                continue
+            city = m.group(1).strip()
+            number = ""
+
+        if re.match(r"^[A-Za-z .'\-]+,\s*[A-Z]{2}$", city):
+            locs.append(city)
+            if len(locs) == 1 and number:
+                dead_head = number
 
     if len(locs) >= 1:
         pickup = locs[0]
