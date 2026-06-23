@@ -41,7 +41,7 @@ class TabSession:
     tab_id = _generate_tab_id()
     return cls(
       tab_id=tab_id,
-      title=title or f"Load {tab_id}",
+      title=title or "New Tab",
       active_mode=default_mode,
     )
 

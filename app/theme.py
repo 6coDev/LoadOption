@@ -22,46 +22,52 @@ class Palette:
   fg_on_btn: str
   fg_btn_idle: str
   border_box: str
+  tab_accent: str           # underline colour for the active tab chip
+  bg_box_focus_border: str  # highlight border colour when a box has focus
 
 
 DARK = Palette(
-  bg_main="#1E1E1E",
-  bg_box="#252526",
-  bg_btn="#0E639C",
-  bg_btn_hover="#1177BB",
-  bg_btn_inactive="#3C3C3C",
-  bg_btn_inactive_hover="#4A4A4A",
+  bg_main="#1A1A1C",
+  bg_box="#1E1E1E",
+  bg_btn="#0E78C4",
+  bg_btn_hover="#1A8CDB",
+  bg_btn_inactive="#2D2D30",
+  bg_btn_inactive_hover="#3A3A3D",
   bg_accent="#4A4A4A",
   bg_accent_hover="#5A5A5A",
-  bg_status="#2D2D30",
-  fg_text="#FFFFFF",
+  bg_status="#252528",
+  fg_text="#F2F2F2",
   fg_muted="#D4D4D4",
   fg_title="#FFFFFF",
-  fg_version="#A0A0A0",
-  fg_separator="#3C3C3C",
+  fg_version="#9A9A9A",
+  fg_separator="#33333A",
   fg_on_btn="#FFFFFF",
-  fg_btn_idle="#D4D4D4",
-  border_box="#3C3C3C",
+  fg_btn_idle="#C8C8C8",
+  border_box="#33333A",
+  tab_accent="#2BA6E0",
+  bg_box_focus_border="#2BA6E0",
 )
 
 LIGHT = Palette(
-  bg_main="#F0F0F0",
+  bg_main="#EFEFF2",
   bg_box="#FFFFFF",
   bg_btn="#0078D4",
-  bg_btn_hover="#005A9E",
-  bg_btn_inactive="#C8E0F8",
-  bg_btn_inactive_hover="#A8D4F5",
+  bg_btn_hover="#106EBE",
+  bg_btn_inactive="#E2E8F0",
+  bg_btn_inactive_hover="#CBD8E8",
   bg_accent="#E67E22",
   bg_accent_hover="#D35400",
-  bg_status="#E0E0E0",
-  fg_text="#000000",
-  fg_muted="#1A1A1A",
-  fg_title="#000000",
-  fg_version="#333333",
-  fg_separator="#B0B0B0",
+  bg_status="#E2E2E6",
+  fg_text="#1A1A1A",
+  fg_muted="#2A2A2A",
+  fg_title="#101010",
+  fg_version="#5A5A5A",
+  fg_separator="#C7C7CC",
   fg_on_btn="#FFFFFF",
-  fg_btn_idle="#0A3D62",
-  border_box="#9E9E9E",
+  fg_btn_idle="#1F4E79",
+  border_box="#C7C7CC",
+  tab_accent="#0078D4",
+  bg_box_focus_border="#0078D4",
 )
 
 FONT_UI = ("Segoe UI", 11)
@@ -106,7 +112,7 @@ def _sync_legacy_names():
   global BG_MAIN, BG_BOX, BG_BTN, BG_BTN_HOVER
   global BG_BTN_INACTIVE, BG_BTN_INACTIVE_HOVER, BG_ACCENT, BG_ACCENT_HOVER
   global BG_STATUS, FG_TEXT, FG_MUTED, FG_TITLE, FG_VERSION, FG_SEPARATOR
-  global FG_ON_BTN, FG_BTN_IDLE, BORDER_BOX
+  global FG_ON_BTN, FG_BTN_IDLE, BORDER_BOX, TAB_ACCENT, BG_BOX_FOCUS_BORDER
 
   p = _p
   BG_MAIN = p.bg_main
@@ -126,6 +132,8 @@ def _sync_legacy_names():
   FG_ON_BTN = p.fg_on_btn
   FG_BTN_IDLE = p.fg_btn_idle
   BORDER_BOX = p.border_box
+  TAB_ACCENT = p.tab_accent
+  BG_BOX_FOCUS_BORDER = p.bg_box_focus_border
 
 
 _sync_legacy_names()

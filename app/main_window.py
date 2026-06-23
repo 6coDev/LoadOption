@@ -51,6 +51,8 @@ class LoadFormatterProApp:
   # ── Window ──────────────────────────────────────────────────────────────────
 
   def _build_window(self):
+    self._fix_tk_dpi_scaling()
+
     self.root.title("Load Formatter Pro v3.0")
     self.root.configure(bg=T.BG_MAIN)
     self.root.resizable(True, True)
@@ -70,6 +72,37 @@ class LoadFormatterProApp:
     for row in range(5):
       self.root.rowconfigure(row, weight=0)
     self.root.rowconfigure(3, weight=1, minsize=280)
+
+  def _fix_tk_dpi_scaling(self):
+    """
+    Tk's own notion of "how many pixels per point" defaults to a
+    conservative value that often does not match the monitor's real scale
+    factor — even after Windows-level DPI awareness is enabled in
+    load_formatter_pro.py. Left uncorrected, fonts and borders can still
+    render undersized or slightly soft because Tk is computing sizes
+    against the wrong DPI assumption.
+
+    `winfo_fpixels('1i')` returns how many *actual* screen pixels fit in
+    one inch on this display — i.e. the real DPI. Dividing by the
+    typical baseline of 72 gives the correct Tk scaling factor. Setting
+    `tk scaling` to that value tells Tk to size every font and widget
+    metric to match the physical screen, producing crisp, native-sharp
+    text and borders instead of a blurred guess.
+
+    Must run before any widgets are built, so it's called first thing in
+    _build_window().
+    """
+    try:
+      dpi = self.root.winfo_fpixels("1i")
+      scaling = dpi / 72.0
+      # Guard against wildly wrong values on unusual setups (e.g. a
+      # misreporting virtual display) — clamp to a sane range so layout
+      # never explodes or collapses to unreadable.
+      scaling = max(1.0, min(scaling, 3.0))
+      self.root.tk.call("tk", "scaling", scaling)
+    except tk.TclError:
+      pass  # Best effort — fall back to Tk's own default if unavailable.
+
 
   # ── Menu ────────────────────────────────────────────────────────────────────
 
@@ -234,8 +267,19 @@ class LoadFormatterProApp:
   def _render_tab_chip(self, session: TabSession):
     """Build the clickable chip widgets for one tab and store references.
     Packed with before=self._add_tab_btn so the '+' button always stays
-    immediately after the most recently added tab, not pushed to the end."""
-    chip = tk.Frame(self._tab_strip, bg=T.BG_BTN_INACTIVE)
+    immediately after the most recently added tab, not pushed to the end.
+
+    Visual note: chips use highlightthickness/highlightbackground for the
+    active-tab accent border. highlightthickness draws *inside* the
+    widget's existing bounding box rather than adding extra pixels, so the
+    chip's footprint and the overall tab-strip height are unchanged."""
+    chip = tk.Frame(
+      self._tab_strip,
+      bg=T.BG_BTN_INACTIVE,
+      highlightthickness=2,
+      highlightbackground=T.BG_BTN_INACTIVE,
+      highlightcolor=T.BG_BTN_INACTIVE,
+    )
     chip.pack(side="left", padx=(0, 4), before=self._add_tab_btn)
 
     label = tk.Label(
@@ -267,6 +311,24 @@ class LoadFormatterProApp:
     chip.bind("<Button-1>", lambda _e, tid=tab_id: self._activate_tab(tid))
     close_btn.bind("<Button-1>", lambda _e, tid=tab_id: self._close_tab(tid))
 
+    # Subtle hover feedback on inactive chips (skipped while active, since
+    # the active chip already has its own accent styling).
+    def _on_enter(_e, tid=tab_id):
+      if tid != self._active_tab_id:
+        self._tab_chips[tid]["frame"].configure(bg=T.BG_BTN_INACTIVE_HOVER)
+        self._tab_chips[tid]["label"].configure(bg=T.BG_BTN_INACTIVE_HOVER)
+        self._tab_chips[tid]["close_btn"].configure(bg=T.BG_BTN_INACTIVE_HOVER)
+
+    def _on_leave(_e, tid=tab_id):
+      if tid != self._active_tab_id:
+        self._tab_chips[tid]["frame"].configure(bg=T.BG_BTN_INACTIVE)
+        self._tab_chips[tid]["label"].configure(bg=T.BG_BTN_INACTIVE)
+        self._tab_chips[tid]["close_btn"].configure(bg=T.BG_BTN_INACTIVE)
+
+    for widget in (chip, label, close_btn):
+      widget.bind("<Enter>", _on_enter, add="+")
+      widget.bind("<Leave>", _on_leave, add="+")
+
     self._tab_chips[tab_id] = {"frame": chip, "label": label, "close_btn": close_btn}
     self._restyle_tab_chip(tab_id, active=False)
 
@@ -276,7 +338,12 @@ class LoadFormatterProApp:
       return
     bg = T.BG_BTN if active else T.BG_BTN_INACTIVE
     fg = T.FG_ON_BTN if active else T.FG_BTN_IDLE
-    chip_refs["frame"].configure(bg=bg)
+    border = T.TAB_ACCENT if active else T.BG_BTN_INACTIVE
+    chip_refs["frame"].configure(
+      bg=bg,
+      highlightbackground=border,
+      highlightcolor=border,
+    )
     chip_refs["label"].configure(bg=bg, fg=fg)
     chip_refs["close_btn"].configure(bg=bg, fg=fg)
 
@@ -463,16 +530,23 @@ class LoadFormatterProApp:
       height=1,
       undo=True,
       maxundo=-1,
+      # 1px highlight border, present on BOTH boxes now for visual
+      # consistency. highlightthickness draws inside the widget's existing
+      # bounds, so this does not change the box's size — it brightens to
+      # the accent colour on focus via the bindings below.
+      highlightthickness=1,
+      highlightbackground=T.BORDER_BOX,
+      highlightcolor=T.BG_BOX_FOCUS_BORDER,
     )
-    if is_output:
-      text_kwargs.update(
-        highlightthickness=1,
-        highlightbackground=T.BORDER_BOX,
-        highlightcolor=T.BG_BTN,
-      )
 
     text_box = tk.Text(text_frame, **text_kwargs)
     text_box.grid(row=0, column=0, sticky="nsew")
+
+    # Brighten the border the instant this box gains keyboard focus, and
+    # relax it back to the neutral border colour when focus leaves — purely
+    # a colour change, no effect on layout.
+    text_box.bind("<FocusIn>", lambda _e, w=text_box: w.configure(highlightbackground=T.BG_BOX_FOCUS_BORDER))
+    text_box.bind("<FocusOut>", lambda _e, w=text_box: w.configure(highlightbackground=T.BORDER_BOX))
 
     scroll_y = tk.Scrollbar(text_frame, orient="vertical", command=text_box.yview)
     scroll_y.grid(row=0, column=1, sticky="ns")
@@ -625,11 +699,15 @@ class LoadFormatterProApp:
         fg=T.FG_TEXT,
         insertbackground=T.FG_TEXT,
         selectbackground=T.BG_BTN,
+        highlightcolor=T.BG_BOX_FOCUS_BORDER,
       )
-    self.output_box.configure(
-      highlightbackground=T.BORDER_BOX,
-      highlightcolor=T.BG_BTN,
-    )
+      # Preserve the accent border on whichever box currently has focus;
+      # the other one (or both, if neither is focused) gets the neutral
+      # border colour.
+      has_focus = (self.root.focus_get() is box)
+      box.configure(
+        highlightbackground=T.BG_BOX_FOCUS_BORDER if has_focus else T.BORDER_BOX
+      )
 
     for key, btn in self._formatter_buttons.items():
       self._style_formatter_button(btn, active=(key == self._active_mode))
